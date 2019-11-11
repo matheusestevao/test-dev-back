@@ -2,6 +2,10 @@
 
 > Não se preocupe caso não consiga finalizar o teste, é uma forma de analisar como você pesquisa, programa e resolve os desafios de programação, mas seria legal vê-lo pronto.
 
+### Instalação
+- Configure o banco de dados;
+- rode o comando composer setup (criará as tabelas e popula com dados)
+
 ### Requisitos:
 - PHP
 - Banco de dados
