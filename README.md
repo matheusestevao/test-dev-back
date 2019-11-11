@@ -20,3 +20,4 @@
 - Valor de comissão
 
 > Não é necessário nenhuma forma de login/autenticação
+
