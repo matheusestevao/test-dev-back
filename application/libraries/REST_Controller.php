@@ -640,7 +640,7 @@ abstract class REST_Controller extends \CI_Controller {
         $controller_method = $object_called.'_'.$this->request->method;
 	    // Does this method exist? If not, try executing an index method
 	    if (!method_exists($this, $controller_method)) {
-		    $controller_method = "index_" . $this->request->method;
+            $controller_method = $this->redirectionMethod($this->request->method);
 		    array_unshift($arguments, $object_called);
 	    }
 
@@ -748,6 +748,20 @@ abstract class REST_Controller extends \CI_Controller {
 	        $_error = &load_class('Exceptions', 'core');
 	        $_error->show_exception($ex);
         }
+    }
+
+    public function redirectionMethod(string $requestMethod): string
+    {
+        $methods = [
+            'save' => 'post',
+            'view' => 'get',
+            'delete' => 'delete',
+            'update' => 'put'
+        ];
+
+        $redirection = array_search($requestMethod, $methods);
+
+        return $redirection;
     }
 
     /**
