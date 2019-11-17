@@ -2,7 +2,7 @@
 
 require APPPATH . 'libraries/REST_Controller.php';
 
-class Seller extends REST_Controller 
+class Sale extends REST_Controller 
 {
 	const COMMISSION = 0.85;
 
@@ -95,6 +95,7 @@ class Seller extends REST_Controller
 		}
 
 		return $validation;
+
 	}
 
 	public function validatingRelationships(?string $id, string $table)
