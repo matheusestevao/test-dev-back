@@ -754,7 +754,7 @@ abstract class REST_Controller extends \CI_Controller {
     {
         $methods = [
             'save' => 'post',
-            'view' => 'get',
+            'viewSales' => 'get',
             'delete' => 'delete',
             'update' => 'put'
         ];

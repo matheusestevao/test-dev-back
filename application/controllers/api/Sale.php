@@ -12,7 +12,7 @@ class Sale extends REST_Controller
         $this->load->database();
 	}
 
-	public function save(): void
+	public function save(array $data): void
 	{
 		$input = $this->input->post();
 
@@ -26,7 +26,9 @@ class Sale extends REST_Controller
 
 		if($cartContent) {
 			$user = $this->getUser($input['user_id']);
-			$commision = $this->commisionCalculator($input);
+
+			$total = $input['price'] * $input['amount'];
+			$commision = $this->commisionCalculator($total);
 
 			$response = [
 				'name' => $user['name'],
@@ -95,7 +97,6 @@ class Sale extends REST_Controller
 		}
 
 		return $validation;
-
 	}
 
 	public function validatingRelationships(?string $id, string $table)
@@ -169,12 +170,161 @@ class Sale extends REST_Controller
 		return $user;
 	}
 
-	public function commisionCalculator(array $data): ?float
+	public function commisionCalculator(?float $total): ?float
 	{
-		$total = $data['price'] * $data['amount'];
-
 		$commision = ($total * self::COMMISSION) / 100;
 
 		return $commision;
+	}
+
+	public function viewSales(): void
+	{
+		$input = $this->input->get();
+
+		$validationSearch = $this->validationSearch($input);
+
+		if($validationSearch['error']) {
+			$this->response([$validationSearch], REST_Controller::HTTP_NOT_FOUND);
+		} else {
+			$user = $input['user_id'];
+			$from = $this->proccessDate($input['from'], 'from');
+			$to   = isset($input['to']) ? $this->proccessDate($input['to'], 'to') : date('Y-m-d').' 23:59:59';
+
+			$this->db->select("user.name as name_user, user.email as email_user, COUNT(cart.id) as amount_sale, SUM(cart.total) as sale_total");
+			$this->db->from("user");
+			$this->db->join("cart", "cart.user_id = user.id");
+			$this->db->where("user.id", $user);
+			$this->db->where("cart.created_at BETWEEN '$from' AND '$to'");
+
+			$query = $this->db->get();
+			$data['records'] = $query->result_array();
+
+			$data['records'][0]['commision'] = $this->commisionCalculator($data['records'][0]['sale_total']);
+			$data['records'][0]['period'] = 'From: '.$from.' - To: '.$to;
+
+			$this->response([$data['records'][0]], REST_Controller::HTTP_OK);
+		}
+	}
+
+	public function validationSearch(array $input): array
+	{
+		$from = isset($input['from']) ? $input['from'] : NULL;
+		$to   = isset($input['to']) ? $input['to'] : NULL;
+		$user = isset($input['user_id']) ? $input['user_id'] : NULL;
+
+		$validation['error'] = false;
+
+		if(is_null($from) && is_null($user)) {
+			$validation['error'] = true;
+
+			$validation[] = [
+				'message' => 'The user_id and from fields are required.',
+				'status' => 'error'
+			];
+		} else if(!is_null($from) && is_null($user)) {
+			$validation['error'] = true;
+
+			$validation['user_id'] = [
+				'message' => 'The user_id field is required.',
+				'status' => 'error'
+			];
+		} else if(is_null($from) && !is_null($user)) {
+			$validation['error'] = true;
+
+			$validation['from'] = [
+				'message'=> 'The from field is required.',
+				'status' => 'error',
+			];
+		}
+
+		if(!is_null($to)) {
+			$validation['to'] = $this->validateDate($to);
+
+			if($validation['to']['error']) {
+				$validation['error'] = true;
+			}
+		}
+
+		if(!is_null($from)) {
+			$validation['from'] = $this->validateDate($from);
+
+			if($validation['from']['error']) {
+				$validation['error'] = true;
+			}
+		}
+
+		if(!is_null($from) && 
+			!is_null($to) && 
+			isset($validation['from']['error']) && 
+			$validation['from']['error'] == false && 
+			isset($validation['to']['error']) && 
+			$validation['to']['error'] == false) {
+
+			$validation['checkDates'] = $this->checkDates($from, $to);
+
+			if($validation['checkDates']['error']) {
+				$validation['error'] = true;
+			}
+		}
+
+		if(!$validation['from']['error']) {
+			unset($validation['from']);
+		}
+
+		if(!is_null($to) && !$validation['to']['error']) {
+			unset($validation['to']);
+		}
+
+		return $validation;
+	}
+
+	public function validateDate(string $date): array
+	{
+		$validation['error'] = false;
+
+		$validate = DateTime::createFromFormat('Y-m-d', $date);
+
+		if(!$validate) {
+			$validation['error'] = true;
+			$validation[] = [
+				'message' => "The from field must be a date in the pattern 'Y-m-d'",
+				'status' => 'error'
+			];
+
+			return $validation;
+		}
+		
+		return $validation;
+	}
+
+	public function checkDates(string $from, string $to): array
+	{
+		$dateFrom = DateTime::createFromFormat('Y-m-d', $from);
+		$dateTo = DateTime::createFromFormat('Y-m-d', $to);
+
+		$validation['error'] = false;
+
+		if($dateTo < $dateFrom) {
+			$validation['error'] = true;
+			$validation[] = [
+				'message' => 'TO field date cannot be greater than FROM field date',
+				'status' => 'error',
+			];
+		}
+
+		return $validation;
+	}
+
+	public function proccessDate(string $date, string $field): string
+	{
+		$date = DateTime::createFromFormat('Y-m-d', $date);
+
+		if($field == 'from') {
+			$newDate = $date->format('Y-m-d').' 00:00:00';
+		} else if($field == 'to') {	
+			$newDate = $date->format('Y-m-d').' 23:59:59';
+		}
+
+		return $newDate;
 	}
 }
