@@ -12,7 +12,7 @@ class Sale extends REST_Controller
         $this->load->database();
 	}
 
-	public function save(array $data): void
+	public function save(): void
 	{
 		$input = $this->input->post();
 
